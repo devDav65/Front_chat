@@ -9,54 +9,85 @@ export default function Sidebar() {
     sessions, currentSessionId, loadingSessions,
     selectSession, createSession, deleteSession, renameSession,
     sidebarOpen, setSidebarOpen,
-    session: authSession, logout,
-    theme
+    session: authSession,
   } = useApp();
 
   return (
     <>
-      {/* Overlay mobile */}
+      {/* Overlay mobile — clique ferme la sidebar */}
       {sidebarOpen && (
-        <div onClick={() => setSidebarOpen(false)} style={{
-          position: 'fixed', inset: 0, zIndex: 15,
-          background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)',
-          display: 'none',
-        }} className="sidebar-overlay" />
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 24,
+            background: 'rgba(0,0,0,0.6)',
+            backdropFilter: 'blur(3px)',
+            WebkitBackdropFilter: 'blur(3px)',
+          }}
+        />
       )}
 
       <aside style={{
-        width: 'var(--sidebar-w)', minWidth: 'var(--sidebar-w)',
-        height: '100%', background: 'var(--bg2)',
+        width: 'var(--sidebar-w)',
+        minWidth: 'var(--sidebar-w)',
+        height: '100%',
+        background: 'var(--bg2)',
         borderRight: '1px solid var(--border)',
-        display: 'flex', flexDirection: 'column',
-        flexShrink: 0, position: 'relative', zIndex: 20,
+        display: 'flex',
+        flexDirection: 'column',
+        flexShrink: 0,
+        zIndex: 25,
         overflow: 'hidden',
         transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+        // Mobile : position fixe, glisse depuis la gauche
+        ...(typeof window !== 'undefined' && window.innerWidth < 768 ? {
+          position: 'fixed' as const,
+          top: 0,
+          left: 0,
+          bottom: 0,
+          transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+        } : {}),
       }}>
-        {/* Header */}
+        {/* Header sidebar */}
         <div style={{
           padding: '18px 16px 14px',
           borderBottom: '1px solid var(--border)',
           flexShrink: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}>
-            <div style={{
-              width: 30, height: 30, borderRadius: 9, flexShrink: 0,
-              background: 'linear-gradient(135deg, var(--accent), #a78bfa)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 2px 12px var(--accentGlow)',
-            }}>
-              <MessageSquare size={14} color="white" strokeWidth={2} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+              <div style={{
+                width: 30, height: 30, borderRadius: 9, flexShrink: 0,
+                background: 'linear-gradient(135deg, var(--accent), #a78bfa)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 2px 12px var(--accentGlow)',
+              }}>
+                <MessageSquare size={14} color="white" strokeWidth={2} />
+              </div>
+              <span style={{
+                fontFamily: 'Instrument Serif, serif', fontSize: 17,
+                fontWeight: 400, color: 'var(--text)',
+              }}>
+                <span style={{ color: 'var(--accent)' }}>N</span>exus
+              </span>
             </div>
-            <span style={{
-              fontFamily: 'Instrument Serif, serif', fontSize: 17,
-              fontWeight: 400, color: 'var(--text)',
-            }}>
-              <span style={{ color: 'var(--accent)' }}>N</span>exus
-            </span>
+            {/* Bouton fermer sur mobile */}
+            <button
+              onClick={() => setSidebarOpen(false)}
+              style={{
+                width: 28, height: 28,
+                background: 'var(--bg3)', border: '1px solid var(--border2)',
+                borderRadius: 7, cursor: 'pointer', color: 'var(--text2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 16, lineHeight: 1,
+              }}
+            >✕</button>
           </div>
 
-          <button onClick={createSession} style={{
+          <button onClick={() => { createSession(); setSidebarOpen(false); }} style={{
             width: '100%', padding: '9px 12px',
             background: 'var(--accentBg)',
             border: '1px dashed rgba(124,106,247,0.3)',
@@ -71,7 +102,7 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {/* Sessions list */}
+        {/* Sessions */}
         <div style={{
           flex: 1, overflowY: 'auto', padding: '8px',
           minHeight: 0, WebkitOverflowScrolling: 'touch' as never,
@@ -106,7 +137,7 @@ export default function Sidebar() {
                 <SessionItem
                   key={s.id} session={s}
                   active={s.id === currentSessionId}
-                  onSelect={() => selectSession(s.id, s.titre)}
+                  onSelect={() => { selectSession(s.id, s.titre); setSidebarOpen(false); }}
                   onDelete={() => deleteSession(s.id)}
                   onRename={(t) => renameSession(s.id, t)}
                 />
@@ -124,7 +155,6 @@ export default function Sidebar() {
           <div style={{
             display: 'flex', alignItems: 'center', gap: 9,
             padding: '8px 10px', borderRadius: 'var(--radius)',
-            cursor: 'pointer', transition: 'var(--transition)',
           }}>
             <div style={{
               width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
@@ -160,29 +190,27 @@ function SessionItem({
   onSelect: () => void; onDelete: () => void; onRename: (t: string) => void;
 }) {
   const [renaming, setRenaming] = useState(false);
-  const [title, setTitle] = useState(session.titre);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [hovered, setHovered] = useState(false);
+  const [title, setTitle]       = useState(session.titre);
+  const inputRef                 = useRef<HTMLInputElement>(null);
+  const [hovered, setHovered]   = useState(false);
 
   useEffect(() => { if (renaming) inputRef.current?.focus(); }, [renaming]);
 
-  const date = new Date(session.updated_at);
-  const diff = Date.now() - date.getTime();
-  const mins = Math.floor(diff / 60000);
-  const hrs  = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-  let dateStr = 'À l\'instant';
-  if (mins >= 1 && mins < 60) dateStr = `Il y a ${mins} min`;
+  const date    = new Date(session.updated_at);
+  const diff    = Date.now() - date.getTime();
+  const mins    = Math.floor(diff / 60000);
+  const hrs     = Math.floor(diff / 3600000);
+  const days    = Math.floor(diff / 86400000);
+  let dateStr   = 'À l\'instant';
+  if (mins >= 1 && mins < 60)  dateStr = `Il y a ${mins} min`;
   else if (hrs >= 1 && hrs < 24) dateStr = `Il y a ${hrs}h`;
-  else if (days === 1) dateStr = 'Hier';
+  else if (days === 1)           dateStr = 'Hier';
   else if (days >= 2 && days < 7) dateStr = `Il y a ${days}j`;
-  else if (days >= 7) dateStr = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  else if (days >= 7)            dateStr = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 
   const confirmRename = () => {
     const t = title.trim() || session.titre;
-    setTitle(t);
-    onRename(t);
-    setRenaming(false);
+    setTitle(t); onRename(t); setRenaming(false);
   };
 
   return (
@@ -192,16 +220,20 @@ function SessionItem({
       onMouseLeave={() => setHovered(false)}
       style={{
         display: 'flex', alignItems: 'center', gap: 8,
-        padding: '8px 10px', borderRadius: 8,
+        padding: '9px 10px', borderRadius: 8,
         cursor: renaming ? 'default' : 'pointer',
         marginBottom: 2, border: '1px solid transparent',
-        background: active ? 'var(--item-active, rgba(124,106,247,0.12))' : hovered ? 'var(--item-hover, rgba(124,106,247,0.06))' : 'transparent',
+        background: active
+          ? 'rgba(124,106,247,0.12)'
+          : hovered ? 'rgba(124,106,247,0.06)' : 'transparent',
         borderColor: active ? 'rgba(124,106,247,0.18)' : 'transparent',
         transition: 'var(--transition)',
+        minHeight: 44, // touch target
       }}
     >
       <div style={{
-        width: 28, height: 28, background: active ? 'var(--accentBg)' : 'var(--bg3)',
+        width: 28, height: 28,
+        background: active ? 'var(--accentBg)' : 'var(--bg3)',
         borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center',
         flexShrink: 0, color: active ? 'var(--accent)' : 'var(--text3)',
         transition: 'var(--transition)',
@@ -216,14 +248,14 @@ function SessionItem({
             onChange={e => setTitle(e.target.value)}
             onBlur={confirmRename}
             onKeyDown={e => {
-              if (e.key === 'Enter') confirmRename();
+              if (e.key === 'Enter')  confirmRename();
               if (e.key === 'Escape') { setTitle(session.titre); setRenaming(false); }
             }}
             style={{
               flex: 1, background: 'var(--bg2)', border: '1px solid var(--accent)',
-              borderRadius: 5, color: 'var(--text)', fontFamily: 'Plus Jakarta Sans, sans-serif',
+              borderRadius: 5, color: 'var(--text)',
+              fontFamily: 'Plus Jakarta Sans, sans-serif',
               fontSize: 13, padding: '2px 8px', outline: 'none', minWidth: 0,
-              boxShadow: '0 0 0 2px var(--accentBg)',
             }}
             onClick={e => e.stopPropagation()}
           />
@@ -241,7 +273,6 @@ function SessionItem({
               fontSize: 13, fontWeight: 500,
               color: active ? 'var(--accent2)' : 'var(--text)',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              transition: 'color var(--transition)',
             }}>{session.titre}</div>
             <div style={{
               fontSize: 10, color: 'var(--text3)',
@@ -252,12 +283,15 @@ function SessionItem({
             <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
               <button
                 onClick={e => { e.stopPropagation(); setRenaming(true); }}
-                title="Renommer" style={actBtnStyle}
+                style={actBtnStyle} title="Renommer"
               ><Pencil size={11} /></button>
               <button
-                onClick={e => { e.stopPropagation(); if (confirm(`Supprimer "${session.titre}" ?`)) onDelete(); }}
-                title="Supprimer"
+                onClick={e => {
+                  e.stopPropagation();
+                  if (confirm(`Supprimer "${session.titre}" ?`)) onDelete();
+                }}
                 style={{ ...actBtnStyle, color: 'var(--danger)' } as React.CSSProperties}
+                title="Supprimer"
               ><Trash2 size={11} /></button>
             </div>
           )}
@@ -268,7 +302,8 @@ function SessionItem({
 }
 
 const actBtnStyle: React.CSSProperties = {
-  width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center',
+  width: 28, height: 28,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
   background: 'transparent', border: 'none', borderRadius: 5,
   cursor: 'pointer', color: 'var(--text3)', transition: 'var(--transition)',
 };
